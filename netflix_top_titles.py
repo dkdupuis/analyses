@@ -26,28 +26,39 @@ most_season_in_week = df[df['category'] == 'TV (English)'].groupby(['show_title'
 print('Stranger Things (9x), Ozark (2x), & Cobra Kai (1x) had 4 seasons in the top 10 in the same week')
 
 ---
-us_weekly_df = df[df['country_iso2'] == 'US']\
-    [['week', 'category', 'show_title', 'weekly_rank']]\
-    .groupby(['week', 'category', 'show_title'])\
-    .min('weekly_rank')\
+'''
+table with top films/series
+total viewership across seasons
+num weeks in top 10
+num spots in top 10
+num weeks #1
+peek weekly viewership meh
+'''
+
+
+
+----
+df['is_num_1'] = df['weekly_rank'] == 1
+df['is_num_1'] = df['is_num_1'].astype(int)
+
+weekly_df = df.groupby(['week', 'category', 'show_title'])\
+    .agg(top_rank=('weekly_rank', 'min'), rank_one=('is_num_1', 'max'), hours=('weekly_hours_viewed', 'sum'))\
     .reset_index()
+
+
 
 #71 weeks of data from 7/4/2021 to 11/6/2022    
 
-def top_shows_and_films(us_weekly_df, category, num_results):
-    tmp = us_weekly_df[us_weekly_df['category'] == category]
-    print(tmp[['category', 'show_title', 'weekly_rank']]\
-        .groupby(['category', 'show_title'])\
-        .agg(weeks=('weekly_rank', 'size'), top_rank=('weekly_rank', 'min'))\
-        .sort_values(['weeks', 'top_rank'], ascending=[False, True])\
+def top_shows_and_films(weekly_df, category, num_results):
+    tmp = weekly_df[weekly_df['category'] == category]
+    print(tmp.groupby(['category', 'show_title'])\
+        .agg(weeks_top_10=('week', 'size')\
+             , top_rank=('top_rank', 'min')\
+             , weeks_num_1=('rank_one', 'sum')\
+             , total_hours=('hours', 'sum')\
+            )
+        .sort_values(['weeks_top_10', 'total_hours'], ascending=[False, False])\
         .head(num_results))
 
-top_shows_and_films(us_weekly_df, category='TV', num_results=15)
-top_shows_and_films(us_weekly_df[us_weekly_df['weekly_rank']==1], category='TV', num_results=15)
-
-top_shows_and_films(us_weekly_df, category='Films', num_results=15)
-top_shows_and_films(us_weekly_df[us_weekly_df['weekly_rank']==1], category='Films', num_results=15)
-
-
-us_weekly_dups_df = df[df['country_iso2'] == 'US']
-df[df['country_iso2'] == 'US'].groupby(['category', 'show_title', 'season_title']).size()
+top_shows_and_films(weekly_df, category='TV (English)', num_results=15)
+top_shows_and_films(weekly_df, category='Films (English)', num_results=15)
