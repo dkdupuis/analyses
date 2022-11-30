@@ -66,23 +66,4 @@ t = time.time()
 d = datetime.datetime.fromtimestamp(t).strftime('%Y-%m-%d %H:%M:%S')
 with open('reddit_worldcup_data_500_weekly' + d + '.json', 'w') as f:
     json.dump(submissions_list, f)
-
-    
-    
-----
-    submission_dict = {field:submission.field for field in submission_fields}
-    for field in submission_fields:
-        submission_dict[field] = submission.field
-    comment_list = []
-    submission.comments.replace_more(limit=0)
-    for top_level_comment in submission.comments:
-        comment_dict = {}
- 
-with open("data.json","r") as f:
-  d = json.load(f)
-        
-        
-    submission_dict = {field:to_dict[field] for field in submission_fields}   
-for submission in subreddit.top(limit=5):
-    print(submission.title)
     
