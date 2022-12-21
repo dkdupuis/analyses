@@ -2,68 +2,54 @@ import os
 import praw
 import time
 import datetime
-#import requests
-
+import json
 
 CLIENT_ID = os.getenv('CLIENT_ID')
 SECRET_TOKEN = os.getenv('SECRET_TOKEN')
 reddit_username = os.getenv('reddit_username')
 reddit_pw = os.getenv('reddit_pw')
 
-'''
-data = {'grant_type': 'password',
-        'username': reddit_username>,
-        'password': reddit_pw}
-headers = {'User-Agent': 'reader_bot'}
+#pull_reddit_data(earliest_utc=1668988801, time_filter='month', submissions_to_query=5, submissions_to_save=3)
+#pull_reddit_data(time_filter='month')
 
-auth = requests.auth.HTTPBasicAuth(CLIENT_ID, SECRET_TOKEN)
-res = requests.post('http://127.0.0.1',
-                    auth=auth, data=data, headers=headers)
-
-TOKEN = res.json()['access_token']
-
-headers = {**headers, **{'Authorization': f"bearer {TOKEN}"}}
-requests.get('https://oauth.reddit.com/api/v1/me', headers=headers)
-
-
-#'https://127.0.0.1/authorize_callback',#'https://www.reddit.com/api/v1/access_token'
-'''
-
-reddit = praw.Reddit(
-    client_id=CLIENT_ID,
-    client_secret=SECRET_TOKEN,
-    password=reddit_pw,
-    user_agent='reader_bot',
-    username=reddit_username,
-)
-
-subreddit = reddit.subreddit("soccer")
+def pull_reddit_data(subreddit_name='worldcup', submissions_to_query=500, submissions_to_save=500, earliest_utc=None, time_filter='week'):
     
-submission_fields = ('created_utc', 'author', 'id', 'permalink', 'num_comments', 'score', 'selftext', 'stickied', 'title', 'upvote_ratio', 'url')
-reply_fields = ('author', 'id', 'score', 'stickied', 'body')
-
-subreddit = reddit.subreddit("worldcup")
-submissions_list = []
-
-for submission in subreddit.top(limit=500, time_filter='week'):
-    submission_dict_complete = vars(submission)
-    submission_dict = {field:submission_dict_complete[field] for field in submission_fields}
-    if submission_dict['author'] != None:
-        submission_dict['author'] = submission_dict['author'].name
-    top_level_replies_list = []
-    submission.comments.replace_more(limit=0)
-    for top_level_reply in submission.comments:
-        reply_dict_complete = vars(top_level_reply)
-        reply_dict = {field:reply_dict_complete[field] for field in reply_fields}
-        if reply_dict['author'] != None:
-            reply_dict['author'] = reply_dict['author'].name
-        top_level_replies_list.append(reply_dict)
-    submission_dict['top_level_replies'] = top_level_replies_list
-    submissions_list.append(submission_dict)
-
+    reddit = praw.Reddit(
+        client_id=CLIENT_ID,
+        client_secret=SECRET_TOKEN,
+        password=reddit_pw,
+        user_agent='reader_bot',
+        username=reddit_username,
+    )
+    subreddit = reddit.subreddit(subreddit_name)
     
-t = time.time()
-d = datetime.datetime.fromtimestamp(t).strftime('%Y-%m-%d %H:%M:%S')
-with open('reddit_worldcup_data_500_weekly' + d + '.json', 'w') as f:
-    json.dump(submissions_list, f)
+    submission_fields = ('created_utc', 'author', 'id', 'permalink', 'num_comments', 'score', 'selftext', 'stickied', 'title', 'upvote_ratio', 'url')
+    reply_fields = ('author', 'id', 'score', 'stickied', 'body', 'created_utc')
     
+    submissions_list = []
+    num_submissions = 0
+    
+    for submission in subreddit.top(limit=submissions_to_query, time_filter=time_filter):
+        submission_dict_complete = vars(submission)
+        if num_submissions < submissions_to_save and (earliest_utc == None or submission_dict_complete.get('created_utc', -1) > earliest_utc):
+            num_submissions = num_submissions + 1
+            print(num_submissions)
+            submission_dict = {field:submission_dict_complete[field] for field in submission_fields}
+            if submission_dict['author'] != None:
+                submission_dict['author'] = submission_dict['author'].name
+            comments_list = []
+            submission.comments.replace_more(limit=None)
+            for comment in submission.comments.list():
+                reply_dict_complete = vars(comment)
+                reply_dict = {field:reply_dict_complete[field] for field in reply_fields}
+                if reply_dict['author'] != None:
+                    reply_dict['author'] = reply_dict['author'].name
+                comments_list.append(reply_dict)
+            submission_dict['comment_list'] = comments_list
+            submissions_list.append(submission_dict)
+    
+    t = time.time()
+    d = datetime.datetime.fromtimestamp(t).strftime('%Y-%m-%d %H:%M:%S')
+    with open('reddit_' + subreddit_name + "_" + str(submissions_to_save) + "_" + d + '.json', 'w') as f:
+        json.dump(submissions_list, f)
+
